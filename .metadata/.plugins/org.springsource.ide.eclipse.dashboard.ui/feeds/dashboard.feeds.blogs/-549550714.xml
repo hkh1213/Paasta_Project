@@ -5,7 +5,277 @@
   <link rel="self" href="https://spring.io/blog.atom" />
   <id>http://spring.io/blog.atom</id>
   <icon>https://spring.io/favicon.ico</icon>
-  <updated>2020-11-12T23:34:14Z</updated>
+  <updated>2020-11-16T19:02:17Z</updated>
+  <entry>
+    <title>Case Study: Elasticsearch sink</title>
+    <link rel="alternate" href="https://spring.io/blog/2020/11/16/case-study-elasticsearch-sink" />
+    <category term="engineering" label="Engineering" />
+    <author>
+      <name>Soby Chacko</name>
+    </author>
+    <id>tag:spring.io,2020-11-12:4268</id>
+    <updated>2020-11-16T19:02:17Z</updated>
+    <content type="html">&lt;div class="paragraph"&gt;
+&lt;p&gt;This article is part of a blog series that explores the newly redesigned Spring Cloud Stream applications based on Java Functions. In this post, we will look at the Elasticsearch sink that allows us to index records in Elasticsearch, and its corresponding Consumer function.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;Here are all the previous parts of this blog series.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="ulist"&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href="https://spring.io/blog/2020/07/13/introducing-java-functions-for-spring-cloud-stream-applications-part-0"&gt;Introducing Function Based Streaming Applications&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href="https://spring.io/blog/2020/07/20/introducing-java-functions-for-spring-cloud-stream-applications-part-1"&gt;Function Composition with Streaming Applications&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href="https://spring.io/blog/2020/07/27/creating-a-supplier-function-and-generating-spring-cloud-stream-source"&gt;How to Build a Supplier and Source Application&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href="https://spring.io/blog/2020/08/03/creating-a-function-for-consuming-data-and-generating-spring-cloud-stream-sink-applications"&gt;How to Build a Consumer and Sink Application&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href="https://spring.io/blog/2020/08/10/case-study-build-and-run-a-streaming-application-using-an-http-source-and-a-jdbc-sink"&gt;Build and Run a Simple Stream Application&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href="https://spring.io/blog/2020/08/17/case-study-http-request-function-and-processor"&gt;Case Study: HTTP Request Function and Processor&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href="https://spring.io/blog/2020/08/25/case-study-reading-from-a-file-and-writing-to-mongodb"&gt;Case Study: File Source and MongoDB Sink&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href="https://spring.io/blog/2020/09/10/case-study-relational-database-source-and-file-sink"&gt;Case Study: Relational Database Source and File Sink&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href="https://spring.io/blog/2020/09/29/case-study-remote-file-ingest-with-spring-cloud-data-flow"&gt;Case Study: Remote File Ingest with Spring Cloud Data Flow&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href="https://spring.io/blog/2020/10/26/case-study-aggregator-function-and-processor"&gt;Case Study: Aggregator Function and Processor&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/div&gt;
+&lt;div class="sect1"&gt;
+&lt;h2 id="elasticsearch-consumer"&gt;&lt;a class="anchor" href="#elasticsearch-consumer"&gt;&lt;/a&gt;Elasticsearch Consumer&lt;/h2&gt;
+&lt;div class="sectionbody"&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;Before we look at the Elasticsearch sink application, let us see the consumer function that powers the sink. As we have seen previously in other sink applications, the consumer is a standard &lt;code&gt;java.util.function.Consumer&lt;/code&gt; which accepts a &lt;code&gt;Message&amp;lt;?&amp;gt;&lt;/code&gt;. The consumer relies upon &lt;a href="https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#boot-features-elasticsearch"&gt;Spring Boot¡¯s support for Elasticsearch&lt;/a&gt; which auto configures a &lt;code&gt;RestHighLevelClient&lt;/code&gt; from Elasticsearch. The consumer supports messages with the following types of payload.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="ulist"&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;String&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;java.util.Map&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href="https://github.com/elastic/elasticsearch/blob/master/libs/x-content/src/main/java/org/elasticsearch/common/xcontent/XContentBuilder.java"&gt;XContentBuilder&lt;/a&gt; from Elasticsearch.&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;When using the consumer, the Elasticsearch index to use is given by the property &lt;code&gt;elasticsearch.consumer.index&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;You may set the Elasticsearch ID to use for each message by setting the &lt;code&gt;INDEX_ID&lt;/code&gt; message header.  Alternately,
+you can set the &lt;code&gt;elasticsearch.consumer.id&lt;/code&gt; property, which accepts a SpEL expression. If neither of these is set, Elasticsearch will auto-generate an ID.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;By setting the property &lt;code&gt;elasticsearch.consumer.async&lt;/code&gt; to &lt;code&gt;true&lt;/code&gt;, we can make the indexing operation asynchronous.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;We can inject the consumer function in the application and invoke its &lt;code&gt;accept&lt;/code&gt; method directly to index records to ElasticSearch.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;For e.g, let¡¯s say we inject the consumer bean in an application as below.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="listingblock"&gt;
+&lt;div class="content"&gt;
+&lt;pre class="prettyprint highlight"&gt;&lt;code&gt;@Autowired
+ElasticsearchConsumer elasticsearchConsumer&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;Then we can use the following &lt;code&gt;java.util.Map&lt;/code&gt; to index a record.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="listingblock"&gt;
+&lt;div class="content"&gt;
+&lt;pre class="prettyprint highlight"&gt;&lt;code&gt;Map&amp;lt;String, Object&amp;gt; jsonMap = new HashMap&amp;lt;&amp;gt;();
+jsonMap.put("age", 100);
+jsonMap.put("dateOfBirth", 1471466076564L);
+jsonMap.put("fullName", "John Doe");
+final Message&amp;lt;Map&amp;lt;String, Object&amp;gt;&amp;gt; message = MessageBuilder.withPayload(jsonMap).build();
+
+elasticsearchConsumer.accept(message);&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;The same information on the map above can be provided as plain &lt;code&gt;JSON&lt;/code&gt; or using &lt;a href="https://github.com/elastic/elasticsearch/blob/master/libs/x-content/src/main/java/org/elasticsearch/common/xcontent/XContentBuilder.java"&gt;XContentBuilder&lt;/a&gt; from Elasticsearch.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="sect1"&gt;
+&lt;h2 id="elasticsearch-sink"&gt;&lt;a class="anchor" href="#elasticsearch-sink"&gt;&lt;/a&gt;Elasticsearch Sink&lt;/h2&gt;
+&lt;div class="sectionbody"&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;As we have seen in the previous blogs, the consumer function becomes more powerful when combining with Spring Cloud Stream to make it a sink application. It has inherent capabilities to communicate with a middleware technology in a seamless manner. The sink application consumes data from a middleware system such as Apache Kafka or RabbitMQ and sends to Elasticsearch. We already provide out of the box variants of Elasticsearch for Kafka and RabbitMQ.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;Let us run through the steps for running the standalone Elasticsearch sink application for Apache Kafka.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;First, go ahead and download the sink application. Since the sink is not generally available yet, let us use the latest milestone release.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="listingblock"&gt;
+&lt;div class="content"&gt;
+&lt;pre class="prettyprint highlight"&gt;&lt;code&gt;wget https://repo.spring.io/milestone/org/springframework/cloud/stream/app/elasticsearch-sink-kafka/3.0.0-M4/elasticsearch-sink-kafka-3.0.0-M4.jar&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;Before running the application, ensure that you have Easticsearch running. Here is a quick way to start a single-node Elasticsearch cluster in a docker container.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="listingblock"&gt;
+&lt;div class="content"&gt;
+&lt;pre class="prettyprint highlight"&gt;&lt;code&gt;docker run -d --name es762 -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.6.2&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;We will also need to make sure that Kafka is running.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;Then run the application as below:&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="listingblock"&gt;
+&lt;div class="content"&gt;
+&lt;pre class="prettyprint highlight"&gt;&lt;code&gt;java -jar elasticsearch-sink-kafka-3.0.0-M4.jar
+ --spring.cloud.stream.bindings.input.destination=data-in --elasticsearch.consumer.index=testing&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;By providing the input destination property, we are asking the sink to receive data from the Kafka topic &lt;code&gt;data-in&lt;/code&gt; and sends the data to the Elasticsearch index &lt;code&gt;testing&lt;/code&gt;.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;Send some test data to the Kafka topic. For example, here is how you can send it using the Kafka console producer script if you have Kafka running locally on port &lt;code&gt;9092&lt;/code&gt;.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="listingblock"&gt;
+&lt;div class="content"&gt;
+&lt;pre class="prettyprint highlight"&gt;&lt;code&gt;kafka-console-producer.sh --broker-list localhost:9092 --topic data-in&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;Then send the following &lt;code&gt;JSON&lt;/code&gt; data.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;&lt;code&gt;{"key1":"value1"}&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;We can verify that the data is indexed by invoking the following endpoint.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;&lt;code&gt;curl localhost:9200/testing/_search&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;Similarly, we can also download the &lt;a href="https://repo.spring.io/milestone/org/springframework/cloud/stream/app/elasticsearch-sink-rabbit/3.0.0-M4/"&gt;RabbitMQ&lt;/a&gt; variant of the Elasticsearch sink application and run it against a RabbitMQ cluster.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="sect2"&gt;
+&lt;h3 id="further-usage-of-the-sink"&gt;&lt;a class="anchor" href="#further-usage-of-the-sink"&gt;&lt;/a&gt;Further usage of the sink&lt;/h3&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;As we have seen several times previously in this series, these Spring Cloud Stream applications become further powerful and resilient when it is run as part of a data pipeline on Spring Cloud Data Flow.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;The Elasticsearch that we saw above can be combined with a number of other applications. For instance, a TCP source app may be receiving data from a source and then dump the data to a middleware destination, from where the Elasticsearch sink consumes and indexes. This index may be then used by an analytics application to generate a dashboard. This is just one example and there are several such use cases. Spring Cloud Data Flow makes the orchestration of these pipelines seamless for the user. We encourage you to take a look at the steps we laid out in previous blogs on how we can deploy apps on Spring Cloud Data Flow. Using those same steps, the Elasticsearch sink application can also be deployed.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="sect2"&gt;
+&lt;h3 id="conclusion"&gt;&lt;a class="anchor" href="#conclusion"&gt;&lt;/a&gt;Conclusion&lt;/h3&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;In this blog, we saw how Elasticsearch consumer function and its corresponding Spring Cloud Stream sink work. The consumer function can be injected into custom applications for combining with other business logic. The sink application is provided out of the box for use with Kafka and RabbitMQ middleware variants.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="paragraph"&gt;
+&lt;p&gt;We still have a few more epsidoses coming up in this blog series. Please stay tuned.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;!-- rendered by Sagan Renderer Service --&gt;</content>
+  </entry>
+  <entry>
+    <title>Spring Data 2020.0 - New and Noteworthy in Spring Data MongoDB 3.1</title>
+    <link rel="alternate" href="https://spring.io/blog/2020/11/13/spring-data-2020-0-new-and-noteworthy-in-spring-data-mongodb-3-1" />
+    <category term="engineering" label="Engineering" />
+    <author>
+      <name>Christoph Strobl</name>
+    </author>
+    <id>tag:spring.io,2020-11-05:4259</id>
+    <updated>2020-11-13T12:50:42Z</updated>
+    <content type="html">&lt;p&gt;The Spring Data MongoDB 3.1 release is one of the modules that highly benefited from the recent changes in the &lt;a href="https://spring.io/blog/2020/11/06/spring-data-2020-0-new-and-noteworthy-a-general-overview"&gt;Spring Data Commons&lt;/a&gt; module, by leveraging the infrastructure built there to bring reactive features like auditing and SpEL.&lt;/p&gt;
+&lt;p&gt;The following snippet gives you an impression of what this means for declarative MongoDB queries using SpEL:&lt;/p&gt;
+&lt;pre&gt;&lt;code class="prettyprint java"&gt;@Query(&amp;quot;{ &amp;#39;supervisor&amp;#39; : ?#{ hasRole(&amp;#39;ROLE_ADMIN&amp;#39;) ? new Document(&amp;#39;$regex&amp;#39;, &amp;#39;*&amp;#39;) : principal.name } }&amp;quot;)&#xD;
+Flux&amp;lt;Person&amp;gt; findAllFilteredByRole();
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;code&gt;@EnableReactiveMongoAuditing&lt;/code&gt; uses the common infrastructure so you can keep track of changes easily.&lt;/p&gt;
+&lt;pre&gt;&lt;code class="prettyprint java"&gt;@Configuration&#xD;
+@EnableReactiveMongoAuditing&#xD;
+static class AuditingConfig extends AbstractReactiveMongoConfiguration {&#xD;
+   &#xD;
+    @Override&#xD;
+     protected String getDatabaseName() {&#xD;
+        return &amp;quot;database&amp;quot;;&#xD;
+    }&#xD;
+    &#xD;
+    @Bean&#xD;
+    public ReactiveAuditorAware&amp;lt;User&amp;gt; auditorProvider() {&#xD;
+        return () -&amp;gt; ReactiveSecurityContextHolder.getContext()&#xD;
+        .map(it -&amp;gt; ...);&#xD;
+    }&#xD;
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;Another focus of the current release was to keep up with the changes and enhancements around the MongoDB Aggregation Framework that lets you specify all sorts of data aggregation operations now, even including the possibility to run JavaScript functions as part of the pipeline (as shown in the example), recreating the average books calculation from the &lt;a href="https://docs.mongodb.com/manual/reference/operator/aggregation/accumulator/#examples"&gt;MongoDB reference documentation&lt;/a&gt;, below:&lt;/p&gt;
+&lt;pre&gt;&lt;code class="prettyprint java"&gt;Accumulator accumulator = accumulatorBuilder()&#xD;
+	.init(&amp;quot;function() { return { count: 0, sum: 0 } }&amp;quot;)&#xD;
+	.accumulate(&amp;quot;function(state, numCopies) { return { count: state.count + 1, sum: state.sum + numCopies } }&amp;quot;)&#xD;
+	.accumulateArgs(&amp;quot;$copies&amp;quot;)&#xD;
+	.merge(&amp;quot;function(state1, state2) { return { count: state1.count + state2.count, sum: state1.sum + state2.sum } }&amp;quot;)&#xD;
+	.finalize(&amp;quot;function(state) { return (state.sum / state.count) }&amp;quot;);
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;To improve performance of aggregations operating on large datasets, MongoDB lets you add index hints to the pipeline by using &lt;code&gt;AggregationOptions.builder().hint(&amp;quot;...&amp;quot;)&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;Speaking of indices, although we highly recommend taking programmatic control over index creation, we also understand the convenience of declarative index definition holds. Therefore, we added partial filter expressions to the &lt;code&gt;@Indexed&lt;/code&gt; and &lt;code&gt;@CompoundIndex&lt;/code&gt; annotations to make index setup a little more convenient, as shown below:&lt;/p&gt;
+&lt;pre&gt;&lt;code class="prettyprint java"&gt;@CompoundIndex(name = &amp;quot;idx&amp;quot;, def = &amp;quot;...&amp;quot;, partialFilter = &amp;quot;{&amp;#39;ssn&amp;#39;: {&amp;#39;$exists&amp;#39;: true}}&amp;quot;)&#xD;
+public class Person {&#xD;
+	&#xD;
+	//...&#xD;
+	@Indexed(partialFilter = &amp;quot;{&amp;#39;rating&amp;#39;: { $lt: 10 }}&amp;quot;) &#xD;
+	String lastname;&#xD;
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;So now that we have sped up aggregations and indexes, it is about time we talk about counting elements. As you know, we switched &lt;code&gt;MongoOperations.count(...)&lt;/code&gt; (which previously worked on cached collection statistics) to run an aggregation for precise counting as part of our efforts on &lt;a href="https://spring.io/blog/2018/06/28/hands-on-mongodb-4-0-transactions-with-spring-data"&gt;Multi Document Transactions&lt;/a&gt;.&lt;br/&gt;Now, in some cases, one might not need the exact document count but can live with a close enough approximation. For those cases, you can now get an estimate from &lt;code&gt;MongoOperations.estimatedCount(...)&lt;/code&gt;. &lt;/p&gt;
+&lt;p&gt;Last but not least, I wanted to mention the incubating &lt;a href="https://www.graalvm.org/reference-manual/native-image/"&gt;GraalVM native image&lt;/a&gt; support for Spring Data MongoDB. Make sure to have Docker installed (just for convenience, as this will get you going without the need to install the GraalVM nor MongoDB) and check out the samples demonstrating instant startup for your &lt;a href="https://github.com/spring-projects-experimental/spring-graalvm-native/tree/0.8.2/spring-graalvm-native-samples/data-mongodb"&gt;classic&lt;/a&gt; or &lt;a href="https://github.com/spring-projects-experimental/spring-graalvm-native/tree/0.8.2/spring-graalvm-native-samples/data-mongodb-reactive"&gt;reactive&lt;/a&gt; MongoDB application.&lt;/p&gt;
+&lt;pre&gt;&lt;code class="prettyprint bash"&gt;$ git clone https://github.com/spring-projects-experimental/spring-graalvm-native.git&#xD;
+$ cd spring-graalvm-native&#xD;
+$ git checkout 0.8.2&#xD;
+$ ./run-dev-container.sh&#xD;
+...@docker: cd spring-graalvm-native-samples/data-mongo&#xD;
+...@docker: ./build.sh&#xD;
+...@docker: ./target/data-mongodb
+&lt;/code&gt;&lt;/pre&gt;
+&lt;!-- rendered by Sagan Renderer Service --&gt;</content>
+  </entry>
+  <entry>
+    <title>Spring Boot 2.3.6 available now</title>
+    <link rel="alternate" href="https://spring.io/blog/2020/11/13/spring-boot-2-3-6-available-now" />
+    <category term="releases" label="Releases" />
+    <author>
+      <name>St?phane Nicoll</name>
+    </author>
+    <id>tag:spring.io,2020-11-12:4269</id>
+    <updated>2020-11-13T05:24:26Z</updated>
+    <content type="html">&lt;p&gt;On behalf of the team and everyone who has contributed, I&amp;rsquo;m happy to announce that Spring Boot 2.3.6 has been released and is now available from Maven Central.&lt;/p&gt;
+&lt;p&gt;This release includes &lt;a href="https://github.com/spring-projects/spring-boot/releases/tag/v2.3.6.RELEASE"&gt;30 bug fixes, documentation improvements, and dependency upgrades&lt;/a&gt;. Thanks to all those who have contributed with issue reports and pull requests.&lt;/p&gt;&lt;h3&gt;&lt;a href="#how-can-you-help" class="anchor" name="how-can-you-help"&gt;&lt;/a&gt;How can you help?&lt;/h3&gt;
+&lt;p&gt;If you&amp;rsquo;re interested in helping out, check out the &lt;a href="https://github.com/spring-projects/spring-boot/labels/status%3A%20ideal-for-contribution"&gt;&amp;ldquo;ideal for contribution&amp;rdquo; tag&lt;/a&gt; in the issue repository. If you have general questions, please ask on &lt;a href="http://stackoverflow.com"&gt;stackoverflow.com&lt;/a&gt; using the &lt;a href="http://stackoverflow.com/tags/spring-boot"&gt;&lt;code&gt;spring-boot&lt;/code&gt; tag&lt;/a&gt; or chat with the community on &lt;a href="https://gitter.im/spring-projects/spring-boot"&gt;Gitter&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;a href="https://spring.io/projects/spring-boot/"&gt;Project Page&lt;/a&gt; | &lt;a href="https://github.com/spring-projects/spring-boot"&gt;GitHub&lt;/a&gt; | &lt;a href="https://github.com/spring-projects/spring-boot/issues"&gt;Issues&lt;/a&gt; | &lt;a href="http://docs.spring.io/spring-boot/docs/2.3.6.RELEASE/reference/html"&gt;Documentation&lt;/a&gt; | &lt;a href="http://stackoverflow.com/questions/tagged/spring-boot"&gt;Stack Overflow&lt;/a&gt; | &lt;a href="https://gitter.im/spring-projects/spring-boot"&gt;Gitter&lt;/a&gt;&lt;/p&gt;
+&lt;!-- rendered by Sagan Renderer Service --&gt;</content>
+  </entry>
   <entry>
     <title>A Bootiful Podcast: Spring Boot 2.4 and living legend, CTO, and friend John Davies</title>
     <link rel="alternate" href="https://spring.io/blog/2020/11/12/a-bootiful-podcast-spring-boot-2-4-and-living-legend-cto-and-friend-john-davies" />
@@ -28,7 +298,7 @@
     </author>
     <id>tag:spring.io,2020-11-12:4270</id>
     <updated>2020-11-12T16:58:00Z</updated>
-    <content type="html">&lt;p&gt;On behalf of the Spring Boot team and everyone that has contributed, I am pleased to announce that Spring Boot 2.4.0 has been released and is available from Maven Central.&lt;/p&gt;
+    <content type="html">&lt;p&gt;On behalf of the Spring Boot team and everyone that has contributed, I am pleased to announce that Spring Boot 2.4.0 has been released and is available from Maven Central. &lt;code&gt;2.4.0&lt;/code&gt; is the first generally available Spring Boot release that uses &lt;a href="https://spring.io/blog/2020/04/30/updates-to-spring-versions"&gt;the new versioning scheme&lt;/a&gt;. Please note that the version is &lt;code&gt;2.4.0&lt;/code&gt; rather than &lt;code&gt;2.4.0.RELEASE&lt;/code&gt; that you may have expected based on previous releases. &lt;/p&gt;
 &lt;p&gt;This release adds a significant number of new features and improvements. For full &lt;a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-2.4-Release-Notes#upgrading-from-spring-boot-23"&gt;upgrade instructions&lt;/a&gt; and &lt;a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-2.4-Release-Notes#new-and-noteworthy"&gt;new and noteworthy&lt;/a&gt; features please see the &lt;a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-2.4-Release-Notes"&gt;release notes&lt;/a&gt;.&lt;/p&gt;&lt;h2&gt;&lt;a href="#what-rsquo-s-new-in-2-4" class="anchor" name="what-rsquo-s-new-in-2-4"&gt;&lt;/a&gt;What&amp;rsquo;s new in 2.4&lt;/h2&gt;&lt;h3&gt;&lt;a href="#config-file-processing-application-properties-and-yaml-files" class="anchor" name="config-file-processing-application-properties-and-yaml-files"&gt;&lt;/a&gt;Config File Processing (application properties and YAML files)&lt;/h3&gt;
 &lt;p&gt;Spring Boot 2.4 has improved the way that &lt;code&gt;application.properties&lt;/code&gt; and &lt;code&gt;application.yml&lt;/code&gt; files are processed. If you only have a simple &lt;code&gt;application.properties&lt;/code&gt; or &lt;code&gt;application.yml file&lt;/code&gt;, your upgrade should be seamless. If, however, you¡¯ve have a more complex setup (with profile-specific properties, or profile activation properties) you may need to &lt;a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-Config-Data-Migration-Guide"&gt;make some changes&lt;/a&gt; if you want to use the new features.&lt;/p&gt;&lt;h3&gt;&lt;a href="#volume-mounted-config-directory-trees" class="anchor" name="volume-mounted-config-directory-trees"&gt;&lt;/a&gt;Volume Mounted Config Directory Trees&lt;/h3&gt;
 &lt;p&gt;A new &lt;code&gt;spring.config.import&lt;/code&gt; property can be used to import configuration trees that are commonly used with Kubernetes. A configuration tree is an alternative way of providing key/value pairs. Each pair is declared in its own file, with the filename forming the property key, and the file contents providing the value.&lt;/p&gt;
@@ -731,7 +1001,7 @@ dependencies {&#xD;
       <name>Christoph Strobl</name>
     </author>
     <id>tag:spring.io,2020-11-04:4254</id>
-    <updated>2020-11-06T09:31:06Z</updated>
+    <updated>2020-11-06T09:31:00Z</updated>
     <content type="html">&lt;p&gt;Spring Data 2020.0, based on &lt;a href="https://spring.io/blog/2020/10/27/spring-framework-5-3-goes-ga"&gt;Spring Framework 5.3&lt;/a&gt;, is out and with it, a ton of new features across the various stores, which are covered by the individual modules. While posting highlights along with the milestone announcements, we wanted to give you a more detailed description of the new features in a series of blog posts. These posts will cover, among other things:&lt;/p&gt;
 &lt;ul&gt;
   &lt;li&gt;Reactive Context Access features in Data Commons.&lt;/li&gt;
@@ -740,8 +1010,8 @@ dependencies {&#xD;
   &lt;li&gt;Neo4J reactive repositories.&lt;/li&gt;
   &lt;li&gt;Paging repository APIs for Spring Data for Apache Geode .&lt;/li&gt;
   &lt;li&gt;Geoshape, index, and reactive search improvements for Spring Data Elasticsearch.&lt;/li&gt;
-  &lt;li&gt;Partial filter and aggregation hints in MongoDB.&lt;/li&gt;
-  &lt;li&gt;&lt;code&gt;@Bean&lt;/code&gt; row mappers for the JDBC module.&lt;/li&gt;
+  &lt;li&gt;Partial filter and aggregation hints in &lt;a href="https://spring.io/blog/2020/11/13/spring-data-2020-0-new-and-noteworthy-in-spring-data-mongodb-3-1"&gt;MongoDB&lt;/a&gt;.&lt;/li&gt;
+  &lt;li&gt;&lt;code&gt;@Bean&lt;/code&gt; row mappers for the &lt;a href="https://spring.io/blog/2020/11/10/spring-data-2020-0-new-and-noteworthy-in-spring-data-jdbc-2-1"&gt;JDBC&lt;/a&gt; module.&lt;/li&gt;
   &lt;li&gt;Per-statement key spaces definition for the Apache Cassandra abstraction.&lt;/li&gt;
   &lt;li&gt;Declarative Couchbase N1QL queries.&lt;/li&gt;
 &lt;/ul&gt;
@@ -1138,52 +1408,6 @@ Artem&lt;/p&gt;
 &lt;p&gt;Repository administrators out there can also feel free to reach out to me if you are concerned about any downstream replication.&lt;/p&gt;
 &lt;p&gt;Take care,&lt;br/&gt;Trevor Marshall&lt;/p&gt;
 &lt;p&gt;&lt;a href="https://github.com/spring-projects/spring-framework/wiki/Spring-Artifactory"&gt;Spring Artifactory Wiki&lt;/a&gt;&lt;/p&gt;
-&lt;!-- rendered by Sagan Renderer Service --&gt;</content>
-  </entry>
-  <entry>
-    <title>Spring Boot 2.3.5 available now</title>
-    <link rel="alternate" href="https://spring.io/blog/2020/10/29/spring-boot-2-3-5-available-now" />
-    <category term="releases" label="Releases" />
-    <author>
-      <name>Scott Frederick</name>
-    </author>
-    <id>tag:spring.io,2020-10-29:4247</id>
-    <updated>2020-10-29T23:28:00Z</updated>
-    <content type="html">&lt;p&gt;On behalf of the team and everyone who has contributed, I&amp;rsquo;m happy to announce that Spring Boot 2.3.5 has been released and is now available from Maven Central.&lt;/p&gt;
-&lt;p&gt;This release includes &lt;a href="https://github.com/spring-projects/spring-boot/releases/tag/v2.3.5.RELEASE"&gt;92 bug fixes, documentation improvements, and dependency upgrades&lt;/a&gt;. Thanks to all those who have contributed with issue reports and pull requests.&lt;/p&gt;&lt;h3&gt;&lt;a href="#how-can-you-help" class="anchor" name="how-can-you-help"&gt;&lt;/a&gt;How can you help?&lt;/h3&gt;
-&lt;p&gt;If you&amp;rsquo;re interested in helping out, check out the &lt;a href="https://github.com/spring-projects/spring-boot/labels/status%3A%20ideal-for-contribution"&gt;&amp;ldquo;ideal for contribution&amp;rdquo; tag&lt;/a&gt; in the issue repository. If you have general questions, please ask on &lt;a href="http://stackoverflow.com"&gt;stackoverflow.com&lt;/a&gt; using the &lt;a href="http://stackoverflow.com/tags/spring-boot"&gt;&lt;code&gt;spring-boot&lt;/code&gt; tag&lt;/a&gt; or chat with the community on &lt;a href="https://gitter.im/spring-projects/spring-boot"&gt;Gitter&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;&lt;a href="https://spring.io/projects/spring-boot/"&gt;Project Page&lt;/a&gt; | &lt;a href="https://github.com/spring-projects/spring-boot"&gt;GitHub&lt;/a&gt; | &lt;a href="https://github.com/spring-projects/spring-boot/issues"&gt;Issues&lt;/a&gt; | &lt;a href="http://docs.spring.io/spring-boot/docs/2.3.5.RELEASE/reference/html"&gt;Documentation&lt;/a&gt; | &lt;a href="http://stackoverflow.com/questions/tagged/spring-boot"&gt;Stack Overflow&lt;/a&gt; | &lt;a href="https://gitter.im/spring-projects/spring-boot"&gt;Gitter&lt;/a&gt;&lt;/p&gt;
-&lt;!-- rendered by Sagan Renderer Service --&gt;</content>
-  </entry>
-  <entry>
-    <title>Spring Boot 2.2.11 available now</title>
-    <link rel="alternate" href="https://spring.io/blog/2020/10/29/spring-boot-2-2-11-available-now" />
-    <category term="releases" label="Releases" />
-    <author>
-      <name>St?phane Nicoll</name>
-    </author>
-    <id>tag:spring.io,2020-10-29:4245</id>
-    <updated>2020-10-29T22:41:42Z</updated>
-    <content type="html">&lt;p&gt;On behalf of the team and everyone who has contributed, I&amp;rsquo;m happy to announce that Spring Boot 2.2.11 has been released and is now available from Maven Central.&lt;/p&gt;
-&lt;p&gt;This release includes &lt;a href="https://github.com/spring-projects/spring-boot/releases/tag/v2.2.11.RELEASE"&gt;50 bug fixes, documentation improvements, and dependency upgrades&lt;/a&gt;. Thanks to all those who have contributed with issue reports and pull requests.&lt;/p&gt;&lt;h3&gt;&lt;a href="#how-can-you-help" class="anchor" name="how-can-you-help"&gt;&lt;/a&gt;How can you help?&lt;/h3&gt;
-&lt;p&gt;If you&amp;rsquo;re interested in helping out, check out the &lt;a href="https://github.com/spring-projects/spring-boot/labels/status%3A%20ideal-for-contribution"&gt;&amp;ldquo;ideal for contribution&amp;rdquo; tag&lt;/a&gt; in the issue repository. If you have general questions, please ask on &lt;a href="http://stackoverflow.com"&gt;stackoverflow.com&lt;/a&gt; using the &lt;a href="http://stackoverflow.com/tags/spring-boot"&gt;&lt;code&gt;spring-boot&lt;/code&gt; tag&lt;/a&gt; or chat with the community on &lt;a href="https://gitter.im/spring-projects/spring-boot"&gt;Gitter&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;&lt;a href="https://spring.io/projects/spring-boot/"&gt;Project Page&lt;/a&gt; | &lt;a href="https://github.com/spring-projects/spring-boot"&gt;GitHub&lt;/a&gt; | &lt;a href="https://github.com/spring-projects/spring-boot/issues"&gt;Issues&lt;/a&gt; | &lt;a href="http://docs.spring.io/spring-boot/docs/2.2.11.RELEASE/reference/html"&gt;Documentation&lt;/a&gt; | &lt;a href="http://stackoverflow.com/questions/tagged/spring-boot"&gt;Stack Overflow&lt;/a&gt; | &lt;a href="https://gitter.im/spring-projects/spring-boot"&gt;Gitter&lt;/a&gt;&lt;/p&gt;
-&lt;!-- rendered by Sagan Renderer Service --&gt;</content>
-  </entry>
-  <entry>
-    <title>Spring Boot 2.1.18 available now</title>
-    <link rel="alternate" href="https://spring.io/blog/2020/10/29/spring-boot-2-1-18-available-now" />
-    <category term="releases" label="Releases" />
-    <author>
-      <name>St?phane Nicoll</name>
-    </author>
-    <id>tag:spring.io,2020-10-29:4244</id>
-    <updated>2020-10-29T13:04:18Z</updated>
-    <content type="html">&lt;p&gt;On behalf of the team and everyone who has contributed, I am pleased to announce that Spring Boot 2.1.18 has been released and is now available from Maven Central.&lt;/p&gt;
-&lt;p&gt;This release includes &lt;a href="https://github.com/spring-projects/spring-boot/releases/tag/v2.1.18.RELEASE"&gt;20 bug fixes, documentation improvements, and dependency upgrades&lt;/a&gt;. Thanks to all those who have contributed with issue reports and pull requests.&lt;/p&gt;
-&lt;p&gt;As mentioned in the &lt;a href="https://spring.io/blog/2019/12/10/spring-boot-2-1-x-eol-november-1st-2020"&gt;announcement&lt;/a&gt; last year, this is the last release in the 2.1 line. Please consider upgrading to Spring Boot 2.3.x if you haven¡¯t already done so.&lt;/p&gt;&lt;h3&gt;&lt;a href="#how-can-you-help" class="anchor" name="how-can-you-help"&gt;&lt;/a&gt;How can you help?&lt;/h3&gt;
-&lt;p&gt;If you&amp;rsquo;re interested in helping out, check out the &lt;a href="https://github.com/spring-projects/spring-boot/labels/status%3A%20ideal-for-contribution"&gt;&amp;ldquo;ideal for contribution&amp;rdquo; tag&lt;/a&gt; in the issue repository. If you have general questions, please ask on &lt;a href="http://stackoverflow.com"&gt;stackoverflow.com&lt;/a&gt; using the &lt;a href="http://stackoverflow.com/tags/spring-boot"&gt;&lt;code&gt;spring-boot&lt;/code&gt; tag&lt;/a&gt; or chat with the community on &lt;a href="https://gitter.im/spring-projects/spring-boot"&gt;Gitter&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;&lt;a href="https://spring.io/projects/spring-boot/"&gt;Project Page&lt;/a&gt; | &lt;a href="https://github.com/spring-projects/spring-boot"&gt;GitHub&lt;/a&gt; | &lt;a href="https://github.com/spring-projects/spring-boot/issues"&gt;Issues&lt;/a&gt; | &lt;a href="http://docs.spring.io/spring-boot/docs/2.1.18.RELEASE/reference/html"&gt;Documentation&lt;/a&gt; | &lt;a href="http://stackoverflow.com/questions/tagged/spring-boot"&gt;Stack Overflow&lt;/a&gt; | &lt;a href="https://gitter.im/spring-projects/spring-boot"&gt;Gitter&lt;/a&gt;&lt;/p&gt;
 &lt;!-- rendered by Sagan Renderer Service --&gt;</content>
   </entry>
 </feed>
