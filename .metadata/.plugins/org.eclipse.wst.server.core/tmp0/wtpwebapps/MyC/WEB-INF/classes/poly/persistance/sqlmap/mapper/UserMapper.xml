@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- JAVA와 연결할 Mapper 파일 설정 -->
+<mapper namespace="poly.persistance.mapper.IUserMapper">
+	<!-- 아이디 비밀번호 -->
+	<select id="getLoginInfo" resultType="UserInfoDTO">
+		SELECT
+		EMAIL,
+		USER_NAME,
+		PASSWORD
+		FROM USER_INFO
+		WHERE 
+		EMAIL = #{email} AND PASSWORD = #{password}
+	</select>
+	<select id="getMyList" resultType="ClosetInfoDTO">
+      SELECT
+      C.file_name, 
+      C.clo_no,
+      C.my_rep,
+      C.user_no,
+      FROM 
+      CLOSET_INFO C <!-- ,USER_INFO U  -->
+      WHERE 
+      <!-- U.user_no = C.user_no or --> C.user_no='0' and C.clo_no>='0' ORDER BY C.clo_no DESC
+   </select>
+</mapper>

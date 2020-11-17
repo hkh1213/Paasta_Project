@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename compilation unit &apos;P1.dsdsd.java&apos; to &apos;getApi.java&apos;&#x0D;&#x0A;- Original project: &apos;MyC&apos;&#x0D;&#x0A;- Original element: &apos;P1.dsdsd.java&apos;&#x0D;&#x0A;- Renamed element: &apos;P1.getApi.java&apos;" description="Rename compilation unit &apos;dsdsd.java&apos;" flags="2" id="org.eclipse.jdt.ui.rename.compilationunit" input="/src&lt;P1{dsdsd.java" name="getApi.java" references="false" stamp="1605186311048" version="1.0"/>
+</session>
