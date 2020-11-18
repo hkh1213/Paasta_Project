@@ -1,14 +1,8 @@
 INDEX VERSION 1.4+C:\Paasta_workspace\.metadata\.plugins\org.eclipse.wst.jsdt.core\indexes
 3735934066.index
-3039579817.index
 3070615555.index
-1963893220.index
-3854209299.index
-2569876053.index
-1654489279.index
-2546017268.index
 196407359.index
 2782115129.index
-957344530.index
+196407359.index
 929296593.index
 3698370316.index

@@ -4,10 +4,8 @@
 <configuration>
     <typeAliases>
        <!-- 사용할 DTO 등록  -->
-      <typeAlias type="poly.dto.MailDTO" alias="MailDTO"/> <!-- 메일 보내는 DTO -->
-      <typeAlias type="poly.dto.ClosetInfoDTO" alias="ClosetInfoDTO"/> <!-- 옷장 DTO -->
-      <typeAlias type="poly.dto.UserInfoDTO" alias="UserInfoDTO"/> <!-- 유저정보 DTO -->
-      <typeAlias type="poly.dto.RecomDTO" alias="RecomDTO"/> <!-- 의상추천정보  DTO -->
-      <typeAlias type="poly.dto.TempDTO" alias="TempDTO"/> <!-- 날씨정보 DTO -->
+      <typeAlias type="poly.dto.ImageDTO" alias="MailDTO"/> <!-- 이미지 저장 DTO -->
+      <typeAlias type="poly.dto.SubjectDTO" alias="ClosetInfoDTO"/> <!-- 과목별 정답 DTO -->
+      <typeAlias type="poly.dto.UserDTO" alias="UserInfoDTO"/> <!-- 유저정보 DTO -->
     </typeAliases>
 </configuration>
